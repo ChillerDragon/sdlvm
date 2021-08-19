@@ -1,0 +1,185 @@
+#!/bin/bash
+
+if [ ! -d ~/.sdlvm ]
+then
+	echo "Error: ~/.sdlvm not found"
+	exit 1
+fi
+
+mkdir -p ~/.sdlvm/versions
+touch ~/.sdlvm/version
+CURRENT_VERSION="$(cat ~/.sdlvm/version)"
+
+function show_help() {
+	echo "usage: sdlvm [OPTIONS..]"
+	echo "options:"
+	echo " help 			shows this help"
+	echo " install <commit/tag>	installs SDL version by git commit or tag"
+	echo " use <installed version>	set installed SDL version as default for compiler and runtime"
+	echo " version			show current active version"
+	echo " versions			list installed versions"
+}
+
+if [ "$#" -eq "0" ]
+then
+	show_help
+	exit 1
+fi
+
+function is_cmd() {
+	[ -x "$(command -v "$1")" ] && return 0
+}
+
+function get_cores() {
+	local cores
+	cores=0
+	if is_cmd nproc
+	then
+		cores="$(nproc)"
+	elif is_cmd sysctl
+	then
+		cores="$$(sysctl -n hw.ncpu)"
+	fi
+	if [ "$cores" -lt "1" ]
+	then
+		cores=1
+	fi
+	echo "$cores"
+}
+
+function get_src() {
+	if [ -d ~/.sdlvm/src/.git ]
+	then
+		(
+			cd ~/.sdlvm/src || exit 1
+			git fetch
+		)
+	else
+		(
+			cd ~/.sdlvm || exit 1
+			git clone git@github.com:libsdl-org/SDL.git src
+		)
+	fi
+}
+
+function install_latest() {
+	(
+		cd ~/.sdlvm/src || exit 1
+		git add .
+		git reset --hard
+		rm -rf build
+		git checkout main
+		git pull
+		./configure || exit 1
+		make -j"$(get_cores)" || exit 1
+		cd build/.libs || exit 1
+		rm ./*.d
+		rm ./*.o
+		mkdir -p ~/.sdlvm/versions/latest
+		mv ./* ~/.sdlvm/versions/latest
+	)
+}
+
+function install_version() {
+	local version="$1"
+	(
+		cd ~/.sdlvm/src || exit 1
+		git add .
+		git reset --hard
+		rm -rf build
+		# TODO: error checking for invalid tags/commits
+		git checkout "$version"
+		./configure || exit 1
+		make -j"$(get_cores)" || exit 1
+		cd build/.libs || exit 1
+		rm ./*.d
+		rm ./*.o
+		mkdir -p ~/.sdlvm/versions/"$version"
+		mv ./* ~/.sdlvm/versions/"$version"
+	)
+}
+
+function parse_args() {
+	local arg
+	local version
+	local install_version
+	while true
+	do
+		arg="$1"
+		shift
+		[[ "$arg" == "" ]] || [[ "$arg" == "--" ]] && break
+
+		if [ "$arg" == "-h" ] || [ "$arg" == "--help" ] || [ "$arg" == "help" ]
+		then
+			show_help
+			exit 0
+		elif [ "$arg" == "version" ]
+		then
+			echo "version: $CURRENT_VERSION"
+		elif [ "$arg" == "versions" ]
+		then
+			echo "installed versions:"
+			for version in ~/.sdlvm/versions/*/
+			do
+				echo "  $(basename "$version")"
+			done
+		elif [ "$arg" == "use" ]
+		then
+			version="$1"
+			shift
+			if [ "$version" == "" ]
+			then
+				echo "usage: sdlvm use <version>"
+				exit 1
+			fi
+			if [ ! -d ~/.sdlvm/versions/"$version" ]
+			then
+				echo "Error: version $version is not installed"
+				echo "  sdlvm install $version"
+				exit 1
+			fi
+			echo "$version" > ~/.sdlvm/version
+		elif [ "$arg" == "install" ]
+		then
+			install_version="$1"
+			shift
+			get_src
+			if [ "$install_version" == "" ]
+			then
+				echo "usage: sdlvm install <version>"
+				echo "versions:"
+				echo "  latest"
+				if [ -d ~/.sdlvm/src/.git ]
+				then
+					(
+						cd ~/.sdlvm/src || exit 1
+						git --no-pager tag | awk '{ print "  " $0 }'
+					)
+				fi
+				exit 1
+			fi
+			for version in ~/.sdlvm/versions/*/
+			do
+				version="$(basename "$version")"
+				if [ "$version" == "$install_version" ] && [ "$install_version" != "latest" ]
+				then
+					echo "version $install_version is already installed"
+					exit 1
+				fi
+			done
+			if [ "$install_version" == "latest" ]
+			then
+				install_latest
+			else
+				install_version "$install_version"
+			fi
+			echo "$install_version" > ~/.sdlvm/version
+		else
+			show_help
+			exit 1
+		fi
+	done
+}
+
+parse_args "$@"
+
