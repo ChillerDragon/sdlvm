@@ -121,6 +121,8 @@ function parse_args() {
 			echo "installed versions:"
 			for version in ~/.sdlvm/versions/*/
 			do
+				[[ -d "$version" ]] || continue
+
 				echo "  $(basename "$version")"
 			done
 		elif [ "$arg" == "use" ]
@@ -160,6 +162,8 @@ function parse_args() {
 			fi
 			for version in ~/.sdlvm/versions/*/
 			do
+				[[ -d "$version" ]] || continue
+
 				version="$(basename "$version")"
 				if [ "$version" == "$install_version" ] && [ "$install_version" != "latest" ]
 				then

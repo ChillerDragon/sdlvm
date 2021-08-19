@@ -2,6 +2,7 @@
 
 function setup_env() {
 	local version
+	export PATH="$PATH:$HOME/.sdlvm/bin/"
 	if [ ! -f ~/.sdlvm/version ]
 	then
 		return
