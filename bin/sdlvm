@@ -7,6 +7,7 @@ then
 fi
 
 mkdir -p ~/.sdlvm/versions
+mkdir -p ~/.sdlvm/src
 touch ~/.sdlvm/version
 CURRENT_VERSION="$(cat ~/.sdlvm/version)"
 
@@ -48,23 +49,23 @@ function get_cores() {
 }
 
 function get_src() {
-	if [ -d ~/.sdlvm/src/.git ]
+	if [ -d ~/.sdlvm/src/SDL/.git ]
 	then
 		(
-			cd ~/.sdlvm/src || exit 1
+			cd ~/.sdlvm/src/SDL || exit 1
 			git fetch
 		)
 	else
 		(
-			cd ~/.sdlvm || exit 1
-			git clone git@github.com:libsdl-org/SDL.git src
+			cd ~/.sdlvm/src || exit 1
+			git clone git@github.com:libsdl-org/SDL.git
 		)
 	fi
 }
 
 function install_latest() {
 	(
-		cd ~/.sdlvm/src || exit 1
+		cd ~/.sdlvm/src/SDL || exit 1
 		git add .
 		git reset --hard
 		rm -rf build
@@ -80,10 +81,29 @@ function install_latest() {
 	)
 }
 
+function install_sdl1() {
+	local version=SDL1
+	(
+		cd ~/.sdlvm/src || exit 1
+		git clone git@github.com:libsdl-org/sdl12-compat
+		cd ~/.sdlvm/src/sdl12-compat || exit 1
+		git add .
+		git reset --hard
+		git pull
+		rm -rf build
+		mkdir build
+		cd build || exit 1
+		cmake ..
+		make -j"$(get_cores)" || exit 1
+		mkdir -p ~/.sdlvm/versions/"$version"
+		mv ./libSDL-* ~/.sdlvm/versions/"$version"
+	)
+}
+
 function install_version() {
 	local version="$1"
 	(
-		cd ~/.sdlvm/src || exit 1
+		cd ~/.sdlvm/src/SDL || exit 1
 		git add .
 		git reset --hard
 		rm -rf build
@@ -99,10 +119,19 @@ function install_version() {
 	)
 }
 
+function get_versions() {
+	(
+		cd ~/.sdlvm/src/SDL || exit 1
+		git --no-pager tag
+	)
+}
+
 function parse_args() {
 	local arg
 	local version
 	local install_version
+	local versions
+	version="$(get_versions)"
 	while true
 	do
 		arg="$1"
@@ -151,12 +180,13 @@ function parse_args() {
 				echo "usage: sdlvm install <version>"
 				echo "versions:"
 				echo "  latest"
-				if [ -d ~/.sdlvm/src/.git ]
+				echo "  SDL1"
+				if [ -d ~/.sdlvm/src/SDL/.git ]
 				then
-					(
-						cd ~/.sdlvm/src || exit 1
-						git --no-pager tag | awk '{ print "  " $0 }'
-					)
+					for version in "$versions"
+					do
+						echo "  $version"
+					done
 				fi
 				exit 1
 			fi
@@ -174,7 +204,31 @@ function parse_args() {
 			if [ "$install_version" == "latest" ]
 			then
 				install_latest
+			elif [ "$install_version" == "SDL1" ]
+			then
+				install_sdl1
 			else
+				local found=0
+				if [[ "$install_version" =~ ^[0-9a-f]+$ ]]
+				then
+					found=1
+				fi
+				if [ "$found" == "0" ]
+				then
+					for version in "$versions"
+					do
+						if [ "$version" == "$install_version" ]
+						then
+							found=1
+							break
+						fi
+					done
+				fi
+				if [ "$found" == "0" ]
+				then
+					echo "Error: invalid version or commit"
+					exit 1
+				fi
 				install_version "$install_version"
 			fi
 			echo "$install_version" > ~/.sdlvm/version
