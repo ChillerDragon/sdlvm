@@ -131,7 +131,7 @@ function parse_args() {
 	local version
 	local install_version
 	local versions
-	version="$(get_versions)"
+	versions="$(get_versions)"
 	while true
 	do
 		arg="$1"
@@ -183,7 +183,7 @@ function parse_args() {
 				echo "  SDL1"
 				if [ -d ~/.sdlvm/src/SDL/.git ]
 				then
-					for version in "$versions"
+					for version in $versions
 					do
 						echo "  $version"
 					done
@@ -215,7 +215,7 @@ function parse_args() {
 				fi
 				if [ "$found" == "0" ]
 				then
-					for version in "$versions"
+					for version in $versions
 					do
 						if [ "$version" == "$install_version" ]
 						then
