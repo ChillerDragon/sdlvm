@@ -39,7 +39,7 @@ function get_cores() {
 		cores="$(nproc)"
 	elif is_cmd sysctl
 	then
-		cores="$$(sysctl -n hw.ncpu)"
+		cores="$(sysctl -n hw.ncpu)"
 	fi
 	if [ "$cores" -lt "1" ]
 	then
