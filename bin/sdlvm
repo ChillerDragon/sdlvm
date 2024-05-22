@@ -107,8 +107,11 @@ function install_version() {
 		git add .
 		git reset --hard
 		rm -rf build
-		# TODO: error checking for invalid tags/commits
-		git checkout "$version"
+		git checkout "$version" || {
+			echo "Invalid version '$version' pick one of those:"
+			get_versions;
+			exit 1;
+		}
 		./configure || exit 1
 		make -j"$(get_cores)" || exit 1
 		cd build/.libs || exit 1
