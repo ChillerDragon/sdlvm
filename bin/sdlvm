@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -u
+
 if [ ! -d ~/.sdlvm ]
 then
 	echo "Error: ~/.sdlvm not found"
@@ -14,11 +16,11 @@ CURRENT_VERSION="$(cat ~/.sdlvm/version)"
 function show_help() {
 	echo "usage: sdlvm [OPTIONS..]"
 	echo "options:"
-	echo " help 			shows this help"
-	echo " install <commit/tag>	installs SDL version by git commit or tag"
-	echo " use <installed version>	set installed SDL version as default for compiler and runtime"
-	echo " version			show current active version"
-	echo " versions			list installed versions"
+	echo " help                     shows this help"
+	echo " install <commit/tag>     installs SDL version by git commit or tag"
+	echo " use <installed version>  set installed SDL version as default for compiler and runtime"
+	echo " version                  show current active version"
+	echo " versions                 list installed versions"
 }
 
 if [ "$#" -eq "0" ]
@@ -137,9 +139,10 @@ function parse_args() {
 	versions="$(get_versions)"
 	while true
 	do
+		[[ "$#" = 0 ]] && break
 		arg="$1"
 		shift
-		[[ "$arg" == "" ]] || [[ "$arg" == "--" ]] && break
+		[[ "$arg" == "--" ]] && break
 
 		if [ "$arg" == "-h" ] || [ "$arg" == "--help" ] || [ "$arg" == "help" ]
 		then
@@ -159,7 +162,7 @@ function parse_args() {
 			done
 		elif [ "$arg" == "use" ]
 		then
-			version="$1"
+			version="${1:-}"
 			shift
 			if [ "$version" == "" ]
 			then
@@ -175,7 +178,7 @@ function parse_args() {
 			echo "$version" > ~/.sdlvm/version
 		elif [ "$arg" == "install" ]
 		then
-			install_version="$1"
+			install_version="${1:-}"
 			shift
 			get_src
 			if [ "$install_version" == "" ]
