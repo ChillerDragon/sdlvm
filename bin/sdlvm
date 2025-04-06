@@ -73,13 +73,12 @@ function install_latest() {
 		rm -rf build
 		git checkout main
 		git pull
-		./configure || exit 1
+		mkdir -p build
+		cd build || exit 1
+		cmake .. || exit 1
 		make -j"$(get_cores)" || exit 1
-		cd build/.libs || exit 1
-		rm ./*.d
-		rm ./*.o
 		mkdir -p ~/.sdlvm/versions/latest
-		mv ./* ~/.sdlvm/versions/latest
+		mv ./lib* ~/.sdlvm/versions/latest
 	)
 }
 
@@ -133,6 +132,7 @@ function install_version() {
 			get_versions;
 			exit 1;
 		}
+		# TODO: check version here not all use configure some use cmake
 		./configure || exit 1
 		make -j"$(get_cores)" || exit 1
 		cd build/.libs || exit 1
