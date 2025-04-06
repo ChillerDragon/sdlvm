@@ -102,6 +102,25 @@ function install_sdl1() {
 	)
 }
 
+function install_sdl2_compat() {
+	local version=sdl2-compat
+	(
+		cd ~/.sdlvm/src || exit 1
+		git clone git@github.com:libsdl-org/sdl2-compat
+		cd ~/.sdlvm/src/sdl2-compat || exit 1
+		git add .
+		git reset --hard
+		git pull
+		rm -rf build
+		mkdir build
+		cd build || exit 1
+		cmake ..
+		make -j"$(get_cores)" || exit 1
+		mkdir -p ~/.sdlvm/versions/"$version"
+		mv ./libSDL2-* ~/.sdlvm/versions/"$version"
+	)
+}
+
 function install_version() {
 	local version="$1"
 	(
@@ -188,6 +207,7 @@ function parse_args() {
 				echo "  latest  (SDL3)"
 				echo "  SDL1    (compat)"
 				echo "  SDL2    (pure)"
+				echo "  sdl2-compat"
 				if [ -d ~/.sdlvm/src/SDL/.git ]
 				then
 					for version in $versions
@@ -214,6 +234,9 @@ function parse_args() {
 			elif [ "$install_version" == "SDL1" ]
 			then
 				install_sdl1
+			elif [ "$install_version" == "sdl2-compat" ]
+			then
+				install_sdl2_compat
 			else
 				local found=0
 				if [[ "$install_version" =~ ^[0-9a-f]+$ ]]
