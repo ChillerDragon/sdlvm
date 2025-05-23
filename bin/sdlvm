@@ -56,12 +56,12 @@ function get_src() {
 		(
 			cd ~/.sdlvm/src/SDL || exit 1
 			git fetch
-		)
+		) || exit 1
 	else
 		(
 			cd ~/.sdlvm/src || exit 1
 			git clone git@github.com:libsdl-org/SDL.git
-		)
+		) || exit 1
 	fi
 }
 
@@ -144,6 +144,11 @@ function install_version() {
 }
 
 function get_versions() {
+	if ! get_src &>/dev/null
+	then
+		echo "Error: failed to get source"
+		exit 1
+	fi
 	(
 		cd ~/.sdlvm/src/SDL || exit 1
 		git --no-pager tag
